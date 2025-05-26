@@ -1,5 +1,5 @@
 
-#ACTIVIDAD 6, ANA SOFÍA GUERRERO
+#ACTIVIDAD 8, ANA SOFÍA GUERRERO
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
@@ -63,7 +63,7 @@ def Buscar_votante():
             return
         
         #Aquí realizo un ciclo for para verificar si la cedula que ingresaron es la misma del archivo de un votante, donde "votantes" es el archivo csv
-
+        encontrado=False
         for Votante in votantes:
 
             #si la cédula de un votante que esta en el archivo es igual a la cedula que ingresaron
