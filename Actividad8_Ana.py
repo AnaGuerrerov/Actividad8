@@ -6,6 +6,10 @@ from tkinter import filedialog
 import csv
 import os
 
+#Creo un conjunto vacio de cédulas de votantes y jurados, para agregar datos, y que no se puedan repetir
+cedula_votantes=set()
+cedula_jurados=set()
+
 #Lista donde se almacenarán los votantes
 votantes = []
 #Creo una lista vacia para agregar datos 
@@ -29,11 +33,23 @@ def Cargar_Votantes():
             next(lector_csv, None) 
 
             #Agreg un votantes.clear para poder limpiar los vontantes anteriores si ya estaban 
-            votantes.clear()  
+            votantes.clear()
+            #Añado un cedula_votantes.clear para limpiar las cédulas anteriores
+            cedula_votantes.clear()
             
             for datocsv in lector_csv:
                 #si la longitud de los datos CSV es mayor o igual a 4, se asegura de que tenga los 4 elementos, se espera que cada votante tenga 4 datos
                 if len(datocsv)>=4:
+                    #debo guardar el dato [1] el cual es la posición 2 d la lista y esta es la cédula
+                    Cedula= datocsv[1]
+
+                    #Aquí debo validar si la cédula del votane ya existe
+                    if Cedula in cedula_votantes:
+                        messagebox.showerror("Error", f"La cédula {Cedula}ya esta registrada, intenta con otra cédula")
+                        #Agrego continue para que detecte el error y siga leyendo las filas, sin alterar los datos
+                        continue
+                    #Debo agregar la cédula si no existe, se agrega con .add al conjunto(set) llamado cedula_votantes
+                    cedula_votantes.add(Cedula)
 
                     #Recorre en el archivo CSV los datos que son, nombre, cédula, salón y mesa, con una lista empezando desde 0
                     #y se le agregan los datos a la lista vacía de votantes
@@ -41,7 +57,7 @@ def Cargar_Votantes():
                     votantes.append({"nombre": datocsv[0],"cedula": datocsv[1],"salon": datocsv[2],"mesa":datocsv[3]})
 
         #Se usa para que el usuario se entere de que fueron cargados exitosamente            
-        messagebox.showinfo("Exíto", "Los Votantes han sido cargados correctamente.")
+        messagebox.showinfo("Éxito", "Los Votantes han sido cargados correctamente.")
 
     #Except para indicar el error que hay si no se cumple
     except Exception as e:
@@ -87,7 +103,9 @@ def Buscar_votante():
 #Aqui lo que hago es probar si el número que se registro es un entero, uso try para que directamente me diga que es un error
 def Números_Enteros(*número):
     try:
-        return (int(n)>0 for n in número)
+        #all devuelve True solo si todos los números cumplen la condición, ciclo for  para que verifique las condiciones de los números ingresados
+        return all(int(n)>=1 for n in número)     
+    #si no cumplen con las condiciones termina en False
     except ValueError:
         return False
 
@@ -201,7 +219,7 @@ def Guardar_Centrode_Votacion():
         #Muestra en la cosa donde estará guardado el archivo directamente
         print("El archivo se guardará en:", os.path.abspath("CentrodeVotacion.csv"))
         #Aquí se crea y se abre el archivo. newline es para que no se usen filas y encoding para los caracteres especiales, 'w' como write
-        with open("CentrodeVotación.csv", "w",newline='', encoding="utf-8") as Archivotaciones:
+        with open("CentrodeVotacion.csv", "w",newline='', encoding="utf-8") as Archivotaciones:
         
             #Se crea un escritor CSV usando el archivo abierto.
             writer = csv.writer(Archivotaciones)
@@ -276,10 +294,19 @@ def guardar_Datos(EntryNombre, EntryCedula, EntryTel, EntryDire, numjurado, Mesa
         messagebox.showerror("Error", "Cédula y Teléfono deben ser números.")
         return
 
-    if not ([Nombre, Cedula, Telefono, Direccion]):
+    if not Nombre or not Cedula or not Telefono or not Direccion:
         messagebox.showerror("Error", "Por favor, complete todos los campos.")
         return
  
+ #Debo verificar si la cédula ya existe 
+    if Cedula in cedula_jurados:
+        messagebox.showerror("Error",f"La cédula {Cedula} ya está registrada")
+        #Uso el return para detenr la función y evitar guardar los datos duplicados
+        return
+
+ #Aquí agrego un conjunto con .add que permite que se le agreguen los datos al conjunto vacio de cedula_jurados
+    cedula_jurados.add(Cedula)
+
  #Creo una lista de los Datos
     Datos = [Nombre, Cedula, Telefono, Direccion]
  
