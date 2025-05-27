@@ -10,6 +10,9 @@ import os
 cedula_votantes=set()
 cedula_jurados=set()
 
+#Creo una lista donde guardará la asistencia 
+Asistencia_Vo= []
+
 #Lista donde se almacenarán los votantes
 votantes = []
 #Creo una lista vacia para agregar datos 
@@ -99,6 +102,107 @@ def Buscar_votante():
     except Exception as e:
         messagebox.showerror("Error", f"Ocurrió un error al buscar al votante: {e}")
 
+
+#----------------------Interfaz Asistencia------------------
+def votantes_asistencia ():
+    Ventana = tk.Toplevel()
+    Ventana.title("Registro de Asistencia")
+    Ventana.geometry("300x200")
+
+    tk.Label(Ventana, text="Cédula").grid(row=0, column=0, padx=5, pady=5)
+    Entrycedula = tk.Entry(Ventana)
+    Entrycedula.grid(row=0, column=1)
+
+    tk.Label(Ventana, text="Salón").grid(row=1, column=0, padx=5, pady=5)
+    Entrysalon = tk.Entry(Ventana)
+    Entrysalon.grid(row=1, column=1)
+
+    tk.Label(Ventana, text="Mesa").grid(row=2, column=0, padx=5, pady=5)
+    Entrymesa = tk.Entry(Ventana)
+    Entrymesa.grid(row=2, column=1)
+
+    tk.Label(Ventana, text="Hora (HH:MM)").grid(row=3, column=0, padx=5, pady=5)
+    Entryhora = tk.Entry(Ventana)
+    Entryhora.grid(row=3, column=1)
+
+    BotonGuardar = tk.Button(Ventana, text="Registrar", command=lambda: Asistencia(Entrycedula, Entrysalon, Entrymesa, Entryhora))
+    BotonGuardar.grid(row=4, column=1, columnspan=2, pady=10)
+#------------------------------------------------------------------
+
+def Asistencia(Entrycedula,Entrysalon,Entrymesa,Entryhora):
+
+    cedula = Entrycedula.get().strip()
+    salon = Entrysalon.get().strip()
+    mesa = Entrymesa.get().strip()
+    hora = Entryhora.get().strip()
+
+    #Debo verificar si no hay un dato completo y asi indique que debe completar los campos
+    if not cedula or not salon or not mesa or not hora:
+
+        messagebox.showerror("Error", "Debe completar todos los campos")
+        #Para detener la función en caso de que hayan campos vacíos
+        return
+    
+    #Verifico que en las entradas de cedula, salon y mesa deben ser número enteros
+    if not Números_Enteros (cedula,salon,mesa):
+        messagebox.showerror("Error","Debe Ingresar números enteros positivos")
+        #Detiene la función en caso de que encuentre un error
+        return
+
+    if hora == "17:00":
+        messagebox.showerror("Error", "No se puede registrar asistencia a las 17:00.")
+        return
+
+    if ":" not in hora or len(hora) != 5:
+      messagebox.showerror("Error", "La hora debe estar en formato HH:MM")
+      return
+    encontrado = False
+
+    #votantes es una lista que esta con los datos de estos
+    for votante in votantes: 
+        #Si la cédula que ingreso es igual a la cédula se encuentra 
+        if votante["cedula"] == cedula:
+            encontrado = True
+            if not  votante["salon"] == salon:
+                messagebox.showerror("Error","Debes Ingresar el Salón correcto")
+                return
+            if not votante["mesa"] == mesa:
+                messagebox.showerror("Error", "Debes Ingresar una Mesa correcta")
+                return
+            
+            break
+    #en el caso en el que no la hayan registrado aún aparece un mensaje
+    if not encontrado:
+        messagebox.showerror("Error", "La cédula no está registrada.")
+        return
+    
+    registro=[salon,mesa,cedula,hora]
+
+    #Agregamos los datos de registro en la lista vacía 
+    Asistencia_Vo.append(registro)
+
+    encabezado = True
+    try:
+        with open("asistencia.csv", "r", newline="") as archivoleer:
+            primera_linea = archivoleer.readline()
+            if primera_linea.strip():
+                encabezado = False
+    except FileNotFoundError:
+        encabezado = True
+
+    try:
+        with open("asistencia.csv", "a", newline="") as archivo:
+            writer = csv.writer(archivo)
+            if encabezado:
+                writer.writerow(["salon", "mesa","cedula", "hora"])
+            writer.writerow(registro)
+
+        messagebox.showinfo("Éxito", "Asistencia registrada correctamente.")
+
+    except Exception as ex:
+        messagebox.showerror("Error", f"No se pudo guardar la asistencia: {ex}")
+
+
 #Defino el botón de BUscar la cédula del jurado
 def Buscar_Jurados():
     #donde la cedula_buscar es igual a la cédula que entro el Jurado
@@ -134,16 +238,16 @@ def Buscar_Jurados():
             for jurado in mesa:
                 #Si el dato que esta en Jurado[1] es decir la posición dos en la lista, en este caso es la cédula
                 if jurado[1]== cedula_buscar:
-
+                    #Aquí se muestran como información todos los datos del jurado
                     messagebox.showinfo("El Jurado existe",  f"Nombre: {jurado[0]}\nCédula: {jurado[1]}\nTeléfono: {jurado[2]}\nDirección: {jurado[3]}\nMesa: {num_mesa}\nSalón: {num_salon}")
                  
                     #podemos colocar un True para mostrar que se encontro y asi un error si este no ha sido encontrado
                     encontrado= True
                      
-                    #Rompemos el ciclo del for
+                    #Rompemos el ciclo 
                     break
 
-                #Debos rompre cada ciclo del for, para que no recorra los datos de nuevo
+                #Se debe romper cada ciclo del for, para que no recorra los datos de nuevo si ya se encontro la cédula.
 
             if encontrado:
                 break
@@ -438,6 +542,10 @@ tk.Button(window,text="Cargar Centro de Votación", command="").grid(row=6,colum
 
 tk.Button(window, text="Cargar Votantes", command=Cargar_Votantes).grid(row=8, column=1, pady=5)
 
+#BOTÓN PARA LA ASISTENCIA
+
+tk.Button(window, text="Asistencia Votantes", command=votantes_asistencia).grid(row=9, column=1, pady=5)
+
 #----------------------------------------------------------------------------------------------------
 
 #Botón Centro de votación
@@ -447,6 +555,6 @@ tk.Button(window, text="Generar Centro de Votación", command=CentroVotacion).gr
 #padx es para el espacio  horizontal y pady para el vertical
 #Aqui es donde hago el Frame para el diseño de Salones y los otros datos
 frame_principal = tk.Frame(window)
-frame_principal.grid(row=9, column=0, columnspan=2,padx=10, pady=10)
+frame_principal.grid(row=12, column=0, columnspan=2,padx=10, pady=10)
 
 window.mainloop()
