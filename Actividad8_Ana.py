@@ -129,8 +129,30 @@ def votantes_asistencia ():
     BotonGuardar.grid(row=4, column=1, columnspan=2, pady=10)
 #------------------------------------------------------------------
 
-def Asistencia(Entrycedula,Entrysalon,Entrymesa,Entryhora):
+def asistencia_registrada (cedula,salon,mesa):
+    #Sirve para verificiar si el archivo 'asistencia.csv' existe
+    if not os.path.exists("asistencia.csv"):
+        #si el archivo no existe devuelve false. lo que quiere decir que la cédula no ha sido registrada aún
+        return False 
 
+    #Se abre el archivo asistencias.csv para leerlo 'r' 
+    with open("asistencia.csv", "r", newline="") as archivo:
+
+        #Se utiliza csv.DictReader que convierte cada fila, para leerla columna por columna
+        reader = csv.DictReader(archivo)
+
+        #Ciclo for para que recorra cada fila en este caso lector
+        for lector in reader:
+            #Con la condición if compara si cada fila corresponde a lo ingresado
+            if lector["cedula"] == cedula and lector["salon"] == salon and lector["mesa"] == mesa:
+                #Si las tres condiciones son ciertas, quiere decir que ya fue registrada
+                return True 
+    #Si después de todo da como resultado que no, se return false 
+    return False  
+
+#Para Verificar si ya esta registrado en la asistencia
+def Asistencia(Entrycedula,Entrysalon,Entrymesa,Entryhora):
+    #defino cada campo de entrada como un elemento
     cedula = Entrycedula.get().strip()
     salon = Entrysalon.get().strip()
     mesa = Entrymesa.get().strip()
@@ -149,52 +171,82 @@ def Asistencia(Entrycedula,Entrysalon,Entrymesa,Entryhora):
         #Detiene la función en caso de que encuentre un error
         return
 
+    #Verifico que la hora 17:00 no puede ser registrado en caso de que la registren muestra un mensaje
     if hora == "17:00":
         messagebox.showerror("Error", "No se puede registrar asistencia a las 17:00.")
+     #Detiene la función en caso de que pongan la hora 17:00
         return
-
+    
+    # if ":" no in hora es si no ponen la hora en el formato de ':'y el len que es la longitud de hora que debe ser de 5
+    #tomando en cuenta los ':', si no es igual a 5, muestra el mensaje
     if ":" not in hora or len(hora) != 5:
+      
+      #Para poder dar un error en caso de que no pongan la hora en el formato correcto (HH:MM)
       messagebox.showerror("Error", "La hora debe estar en formato HH:MM")
+
+     #Detiene la función en caso de que pongan un formato incorrecto
       return
+    
+    #Inicia en false ya que no se ha encontrado el dato aún
     encontrado = False
 
     #votantes es una lista que esta con los datos de estos
     for votante in votantes: 
         #Si la cédula que ingreso es igual a la cédula se encuentra 
         if votante["cedula"] == cedula:
+            #Si se encuentra la cédula del votante igual a la del archivo
             encontrado = True
             if not  votante["salon"] == salon:
                 messagebox.showerror("Error","Debes Ingresar el Salón correcto")
+                #Para detener la función en caso que el salón no exista
                 return
             if not votante["mesa"] == mesa:
                 messagebox.showerror("Error", "Debes Ingresar una Mesa correcta")
+                #Para detener la función en caso que la mesa no exista
                 return
-            
             break
     #en el caso en el que no la hayan registrado aún aparece un mensaje
     if not encontrado:
         messagebox.showerror("Error", "La cédula no está registrada.")
         return
     
+
+     # Aquí se hace la validación de asistencia repetida, si ya estan registradas muestra el mensaje
+    if asistencia_registrada(cedula, salon, mesa):
+        messagebox.showerror("Error", "Esta asistencia ya fue registrada.")
+        #Se detiene la función en caso de que ya este registrada
+        return
+    
+    #Se crea esta lista con los datos en orden
     registro=[salon,mesa,cedula,hora]
 
     #Agregamos los datos de registro en la lista vacía 
     Asistencia_Vo.append(registro)
 
+    #Asume que el encabezado debe estar, por lo tanto true
     encabezado = True
     try:
+        #Se intenta abrir el archivo en modo lectura 'r'
         with open("asistencia.csv", "r", newline="") as archivoleer:
+            #lee la primera línea que es el encabezado con las columnas
+            
             primera_linea = archivoleer.readline()
             if primera_linea.strip():
+                #una vez que el encabezado ya esta escrito, para evitar escribir el encabezado de nuevo
                 encabezado = False
+    #En caso de que el archivo no exista 
     except FileNotFoundError:
+        #para indicar que sí se debe escribir el encabezado
         encabezado = True
 
     try:
+        #Se abre el archivo, en 'a' que es agregar
         with open("asistencia.csv", "a", newline="") as archivo:
             writer = csv.writer(archivo)
+            #si el encabezado es igual True, se escribe la primera fila con los nombres de las columnas
             if encabezado:
                 writer.writerow(["salon", "mesa","cedula", "hora"])
+            #se hace uso del registro que es una lista con los datos registrados
             writer.writerow(registro)
 
         messagebox.showinfo("Éxito", "Asistencia registrada correctamente.")
