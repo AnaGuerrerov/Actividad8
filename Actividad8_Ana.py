@@ -99,6 +99,70 @@ def Buscar_votante():
     except Exception as e:
         messagebox.showerror("Error", f"Ocurrió un error al buscar al votante: {e}")
 
+#Defino el botón de BUscar la cédula del jurado
+def Buscar_Jurados():
+    #donde la cedula_buscar es igual a la cédula que entro el Jurado
+    cedula_buscar= EntryCedulajurado.get()
+
+    if not cedula_buscar:
+      messagebox.showerror("Error","Debe ingresar un número de cédula")
+
+      return
+    
+    #Hago uso del try para que me detecte el error inmediato
+    try:
+    #Aqui convierto como número entero la cédula
+        cedula_buscar=int(cedula_buscar)
+    except ValueError:
+        messagebox.showerror("Erro", "La cédula debe ser un número")
+        return
+ 
+
+    #La defino como False antes de empezar el ciclo, ya que no he encontrado nada aún
+    encontrado=False
+    #Se pone que salon = 1 ya que se debe empezar por un número mayor a 0 en todos los datos
+    num_salon = 1
+    #realizo un ciclo for para validar uno por uno y verificar la cédula del jurado
+    #mesajurados es la lista que contiene la información, pero como contiene todos los datos, debe realizar el ciclo, hasta llegar a jurados
+
+    
+    #Se pone que salon = 1 ya que se debe empezar por un número mayor a 0 en todos los datos
+    num_salon = 1
+    for salon in mesajurados:
+        num_mesa = 1
+        for mesa in salon:
+            for jurado in mesa:
+                #Si el dato que esta en Jurado[1] es decir la posición dos en la lista, en este caso es la cédula
+                if jurado[1]== cedula_buscar:
+
+                    messagebox.showinfo("El Jurado existe",  f"Nombre: {jurado[0]}\nCédula: {jurado[1]}\nTeléfono: {jurado[2]}\nDirección: {jurado[3]}\nMesa: {num_mesa}\nSalón: {num_salon}")
+                 
+                    #podemos colocar un True para mostrar que se encontro y asi un error si este no ha sido encontrado
+                    encontrado= True
+                     
+                    #Rompemos el ciclo del for
+                    break
+
+                #Debos rompre cada ciclo del for, para que no recorra los datos de nuevo
+
+            if encontrado:
+                break
+
+
+                 # Solo se aumenta el número del mesa si el jurado no ha sido encontrado
+                 # Evitando  mostrar una mesa incorrecta si se encontró antes
+            num_mesa +=1
+
+        if encontrado:
+            break
+            
+             #Se suma el número de salón si no se ha encontrado al jurado, hasta encontrar el salón con la cédula del jurado. Si se encuentra se hace break
+        num_salon +=1
+            
+    #Si no se encuentra la cédula informamos 
+    if not encontrado:
+        messagebox.showinfo("No encontrado", "No se encontró ningún Jurado con esa cédula" )
+
 
 #Aqui lo que hago es probar si el número que se registro es un entero, uso try para que directamente me diga que es un error
 def Números_Enteros(*número):
@@ -326,7 +390,7 @@ def guardar_Datos(EntryNombre, EntryCedula, EntryTel, EntryDire, numjurado, Mesa
 
 window = tk.Tk()
 window.title("Registro de Votación")
-window.geometry("600x600")
+window.geometry("200x300")
 
 #Realizo todos los datos con la filas y las columnas , al finalizar realizo el botón 
 
@@ -350,7 +414,7 @@ tk.Label(window, text="Buscar Jurado por Cédula: ").grid(row=10, column=0, padx
 EntryCedulajurado = tk.Entry(window)
 EntryCedulajurado.grid(row=10, column=1, padx=10, pady=5)
 
-tk.Button(window,text="Buscar", command="").grid(row=10,column=2, pady=5)
+tk.Button(window,text="Buscar", command=Buscar_Jurados).grid(row=10,column=2, pady=5)
 
 #BUSCAR VOTANTE POR CÉDULA
 
