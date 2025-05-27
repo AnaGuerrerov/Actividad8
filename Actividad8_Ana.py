@@ -107,26 +107,26 @@ def Buscar_votante():
 def votantes_asistencia ():
     Ventana = tk.Toplevel()
     Ventana.title("Registro de Asistencia")
-    Ventana.geometry("300x200")
+    Ventana.geometry("250x200")
 
-    tk.Label(Ventana, text="Cédula").grid(row=0, column=0, padx=5, pady=5)
+    tk.Label(Ventana, text="Cédula").grid(row=0, column=1)
     Entrycedula = tk.Entry(Ventana)
-    Entrycedula.grid(row=0, column=1)
+    Entrycedula.grid(row=1, column=1)
 
-    tk.Label(Ventana, text="Salón").grid(row=1, column=0, padx=5, pady=5)
+    tk.Label(Ventana, text="Salón").grid(row=2, column=1, padx=100)
     Entrysalon = tk.Entry(Ventana)
-    Entrysalon.grid(row=1, column=1)
+    Entrysalon.grid(row=3, column=1)
 
-    tk.Label(Ventana, text="Mesa").grid(row=2, column=0, padx=5, pady=5)
+    tk.Label(Ventana, text="Mesa").grid(row=4, column=1)
     Entrymesa = tk.Entry(Ventana)
-    Entrymesa.grid(row=2, column=1)
+    Entrymesa.grid(row=5, column=1)
 
-    tk.Label(Ventana, text="Hora (HH:MM)").grid(row=3, column=0, padx=5, pady=5)
+    tk.Label(Ventana, text="Hora (HH:MM)").grid(row=6, column=1)
     Entryhora = tk.Entry(Ventana)
-    Entryhora.grid(row=3, column=1)
+    Entryhora.grid(row=7, column=1)
 
     BotonGuardar = tk.Button(Ventana, text="Registrar", command=lambda: Asistencia(Entrycedula, Entrysalon, Entrymesa, Entryhora))
-    BotonGuardar.grid(row=4, column=1, columnspan=2, pady=10)
+    BotonGuardar.grid(row=9, column=1)
 #------------------------------------------------------------------
 
 def asistencia_registrada (cedula,salon,mesa):
@@ -229,7 +229,7 @@ def Asistencia(Entrycedula,Entrysalon,Entrymesa,Entryhora):
         #Se intenta abrir el archivo en modo lectura 'r'
         with open("asistencia.csv", "r", newline="") as archivoleer:
             #lee la primera línea que es el encabezado con las columnas
-            
+
             primera_linea = archivoleer.readline()
             if primera_linea.strip():
                 #una vez que el encabezado ya esta escrito, para evitar escribir el encabezado de nuevo
