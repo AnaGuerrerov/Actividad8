@@ -3,9 +3,13 @@
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
+import pandas as pd
+import matplotlib as plt
 import csv
 import os
 
+#Creo una diccionario vacío de resultados para cargar resultados csv
+resultados = []
 #Creo un conjunto vacio de cédulas de votantes y jurados, para agregar datos, y que no se puedan repetir
 cedula_votantes=set()
 cedula_jurados=set()
@@ -109,7 +113,7 @@ def votantes_asistencia ():
     Ventana.title("Registro de Asistencia")
     Ventana.geometry("250x200")
 
-    tk.Label(Ventana, text="Cédula").grid(row=0, column=1)
+    tk.Label(Ventana, text="Cédula del Votante").grid(row=0, column=1)
     Entrycedula = tk.Entry(Ventana)
     Entrycedula.grid(row=1, column=1)
 
@@ -253,6 +257,45 @@ def Asistencia(Entrycedula,Entrysalon,Entrymesa,Entryhora):
 
     except Exception as ex:
         messagebox.showerror("Error", f"No se pudo guardar la asistencia: {ex}")
+
+#Defino el botón de cargar resulados csv
+def Cargar_Resultados():
+
+    #Esto me permite abrir una ventana para poder seleccionar el archivo, solo se muestran los archivos con extensión .csv
+    archivocsv = filedialog.askopenfilename(title="Seleccione el archivo de resultados.", filetypes=[("Archivos CSV", "*.csv")])
+    
+    if not archivocsv:
+        messagebox.showerror("Error", "No se ha seleccionado ningún archivo")
+        return
+    #Uso try para que me muestre el error al instante
+    try:
+        #Se abre el archivo en modo lectura, csv.DictReader lee el archivo CSV para los encabezados 
+        with open(archivocsv, encoding="utf-8") as archivo_resultados:
+            lector_csv = csv.DictReader(archivo_resultados)
+
+            # el encabezado debe ser de ese orden, p{i} señala el número que esta en el archivo csv, de p1 a p9
+            encabezados= ["salon", "mesa", "tarjeton"] + [f"p{i}" for i in range(1, 10)]
+
+            #fieldnames contiene una lista con los nombres de las columnas del archivo
+            #Verifica si no son iguales a los encabezados
+            if lector_csv.fieldnames != encabezados:
+
+                #muestra un mensaje si no se encontraron los encabazados 
+                messagebox.showerror("Error",f"Encabezados incorrectos.\nSe esperaban:\n{encabezados}\n"f"Se encontraron:\n{lector_csv.fieldnames}")
+                #Detiene la función si son incorrectos
+                return
+            
+            # Limpia la lista de resultados
+            resultados.clear()  
+            #El ciclo for es para recorrer cada f en el archivo csv, para agregarla a la lista resultados
+            for f in lector_csv:
+                resultados.append(f)
+                
+        #Cuando se carguen todas la filas muestra un mensaje e indica la longitud de los datos usando 'len'
+        messagebox.showinfo("Éxito", f"Se cargaron {len(resultados)} resultados correctamente.")
+        
+    except Exception as e:
+        messagebox.showerror("Error", f"No se pudo cargar el archivo:\n{e}")
 
 
 #Defino el botón de BUscar la cédula del jurado
@@ -465,9 +508,7 @@ def Guardar_Centrode_Votacion():
 
         messagebox.showerror("Error", f"No se pudo guardar el centro de votación:\n{ex}")
 
-
-
-
+        
 def jurado_datos(numjurado, Mesa, Salon):
 
  #Aqui creo una nueva ventana en donde se hará el formulario de registro
@@ -566,19 +607,19 @@ EntryJurados.grid(row=2, column=1, padx=10, pady=5)
 
 #BUSCAR JURADO POR CEDULA
 
-tk.Label(window, text="Buscar Jurado por Cédula: ").grid(row=10, column=0, padx=10, pady=5)
+tk.Label(window, text="Buscar Jurado por Cédula: ").grid(row=12, column=0, padx=10, pady=5)
 EntryCedulajurado = tk.Entry(window)
-EntryCedulajurado.grid(row=10, column=1, padx=10, pady=5)
+EntryCedulajurado.grid(row=12, column=1, padx=10, pady=5)
 
-tk.Button(window,text="Buscar", command=Buscar_Jurados).grid(row=10,column=2, pady=5)
+tk.Button(window,text="Buscar", command=Buscar_Jurados).grid(row=12,column=2, pady=5)
 
 #BUSCAR VOTANTE POR CÉDULA
 
-tk.Label(window, text="Buscar Votante por Cédula: ").grid(row=11, column=0, padx=10, pady=5)
+tk.Label(window, text="Buscar Votante por Cédula: ").grid(row=13, column=0, padx=10, pady=5)
 EntryVotante = tk.Entry(window)
-EntryVotante.grid(row=11, column=1, padx=10, pady=5)
+EntryVotante.grid(row=13, column=1, padx=10, pady=5)
 
-tk.Button(window, text="Buscar", command=Buscar_votante).grid(row=11, column=2, pady=5)
+tk.Button(window, text="Buscar", command=Buscar_votante).grid(row=13, column=2, pady=5)
 
 
 #BOTÓN GUARDAR CENTRO DE VOTACIÓN 
@@ -598,6 +639,14 @@ tk.Button(window, text="Cargar Votantes", command=Cargar_Votantes).grid(row=8, c
 
 tk.Button(window, text="Asistencia Votantes", command=votantes_asistencia).grid(row=9, column=1, pady=5)
 
+#BOTÓN PARA CARGAR RESULTADOS CSV
+
+tk.Button(window, text="Cargar resultados csv", command=Cargar_Resultados).grid(row=10, column=1, pady=5)
+
+#BOTÓN PARA EL RESUMEN ESTADÍSTICO
+
+tk.Button(window,text="Resumen Estadístico", command="").grid(row=11, column=1, pady=5)
+
 #----------------------------------------------------------------------------------------------------
 
 #Botón Centro de votación
@@ -607,6 +656,6 @@ tk.Button(window, text="Generar Centro de Votación", command=CentroVotacion).gr
 #padx es para el espacio  horizontal y pady para el vertical
 #Aqui es donde hago el Frame para el diseño de Salones y los otros datos
 frame_principal = tk.Frame(window)
-frame_principal.grid(row=12, column=0, columnspan=2,padx=10, pady=10)
+frame_principal.grid(row=14, column=0, columnspan=2,padx=10, pady=10)
 
 window.mainloop()
