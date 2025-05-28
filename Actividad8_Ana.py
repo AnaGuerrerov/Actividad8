@@ -4,9 +4,17 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 import pandas as pd
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import csv
 import os
+
+ #Realizo estos dos diccionarios vacíos para las estadisiticas
+jurados_salon = {}
+jurados_mesa = {}
+votantes_salon = {}
+asistencia_salon = {}
+resumen_votos = {}
+
 
 #Creo una diccionario vacío de resultados para cargar resultados csv
 resultados = []
@@ -298,6 +306,202 @@ def Cargar_Resultados():
         messagebox.showerror("Error", f"No se pudo cargar el archivo:\n{e}")
 
 
+#Debo poner estos parámetros que son las listas con los datos de los votantes y jurados
+def resumen_estadistico(mesajurados, votantes, Asistencia_Vo, resultados):
+    #Hago un try para que me detecte errores
+    try:
+
+       #Establezco este contador en 0 para contar el total de las mesas
+        totalmesas_registradas= 0 
+        #-----------Total de jurados por salón y por mesa--------------------
+        #'salones' es el salón actual que se está procesando, y ese salón es una lista de mesas
+        #para i que empieza en 1, recorre la lista mesajurados, y enumerate es la secuencia que se lleva en los ()
+        for i, salones in  enumerate(mesajurados, 1): 
+            
+            #Aquí se inicia otro contado y se sumará todos los jurados encontrados en el salón actual 
+            salontotaljurados = 0
+
+            #Hago otro ciclo for para recorrer ahora las mesas, 'm' es el valor que inicia en 1, almacena el número de la mesa actual
+            #'mesa' contiene los datos de la mesa actual, en la estructura mesajurados
+            for m, mesas in enumerate(salones, 1):
+                # Aquí se calcula cuántos jurados hay en mesas, len(mesas) da la cantidad de jurados para una mesa en especifico
+                num_juradosmesa = len(mesas)
+                #Esta línea suma el número de jurados encontrados en la mesa actual (num_juradosmesa) al total acumulado para el salón actual.
+                salontotaljurados += num_juradosmesa
+                #Aquí guarda en el diccionario jurados_mesa cuántos jurados tiene esa mesa
+                jurados_mesa[f"Salón {i}, Mesa {m}"] = num_juradosmesa
+                # Esto cuenta todas las mesas que se han regitrado en mesajurados, sin importar si tienen jurados o no
+                totalmesas_registradas+= 1 
+                #Aquí guarda el número total de jurados encontrados en el salón actual en el diccionario jurados_salon
+            jurados_salon[f"Salón {i}"] = salontotaljurados
+        
+
+        #------------Total de votantes por salón-------------
+        #Se crea un DataFrame a partir de la lista 'votantes'
+        df_votantes = pd.DataFrame(votantes)
+        #En esta condición verificamos si hay votantes, .shape nos da sus dimensiones en forma de tupla (x,y)
+        #pone como condición si hay más de 0 filas, o si ya hay alguien regisrado
+        if df_votantes.shape[0] > 0:
+            # Intenta convertir la columna 'salon' a números
+            # 'errors='coerce'' convier un valor que no sea numérico a NaN que es (Not a Number)
+            #['salon_num'] crea una nueva columna con este nombre. Si ya existe, se sobrescribirá en el df
+            df_votantes['salon_num'] = df_votantes['salon'].apply(lambda x: pd.to_numeric(x, errors='coerce'))
+            #Elimina los valores faltantes , especificando loq ue debe eliminar con 'subset'
+            df_votantes = df_votantes.dropna(subset=['salon_num'])
+            #Vuelve los valores de la columna números enteros
+            df_votantes['salon_num'] = df_votantes['salon_num'].astype(int)
+            #Cuenta las veces que aparecen los datos
+            conteo_votantes = df_votantes['salon_num'].value_counts()
+
+            #Realizo un ciclo for para verificar los salones, el +1 es para que genere rango de (1, al número de salones) 
+            #len(mesajurados) da la longitud de salones y se crea una secuencia del 1 hasta el total de salones
+            for i in range(1, len(mesajurados) + 1):
+                #aquí realiza una etiqueta en donde i sera el número de salones
+                saloninfo = f"Salón {i}"
+                #votantes_salon[salon_key] es cómo cada salón ()"Salón 1", "Salón 2") obtenga su recuento de votantes 
+                # y se almacena en el diccionario votantes_salon, si 'i' existe da el número, si no existe da 0
+                votantes_salon[saloninfo] = conteo_votantes.get(i, 0)
+        #si no hay votantes
+        else:
+            for i in range(1, len(mesajurados) + 1):
+                #se le asigan un valor al diccionario de 0
+                votantes_salon[f"Salón {i}"] = 0
+
+        # ---------Porcentaje de mesas completas--------------
+
+        # total_mesas ahora usa 'total_mesas_registradas' que es la cuenta de las sublistas
+        total_mesas = totalmesas_registradas
+        #sum() cuenta los  elementos que cumplen una función, el 1 es un contador
+        # el if len es para verificar si en la longitud de mesas hay un jurado
+        mesas_completas = sum(1 for salon_data in mesajurados for mesa_data in salon_data if len(mesas) > 0)
+        #verifica si el total de mesas es mayor y para no dividir entre 0 s pone un else para que ponga el dato en 0
+        porcentaje_completas = (mesas_completas / total_mesas * 100) if total_mesas > 0 else 0
+        
+
+        #-------Asistencia por salón----------------------
+        
+        #Realizo un ciclo for para verificar los salones, el +1 es para que genere rango de (1, al número de salones) 
+        #len(mesajurados) da la longitud de salones y se crea una secuencia del 1 hasta el total de salones
+        for i in range(1, len(mesajurados) + 1):
+            #se le asigan un valor al diccionario de 0
+            asistencia_salon[f"Salón {i}"] = 0
+
+        # Aquí se verifica si la lista 'Asistencia_Vo' (registros de asistencia) tiene datos
+        if Asistencia_Vo:
+           
+            try:
+                #Se creaun DataFrame a partir de los datos de asistencia y se define las columnas 
+                df_asistencia = pd.DataFrame(Asistencia_Vo, columns=['salon_col', 'mesa', 'cedula', 'hora'])
+                # Se convierte la columna 'salon_col' a números. Si un valor no es numérico marca'errors='coerce' y  lo convierte a NaN (Not a Number)
+                df_asistencia['salon_num'] = pd.to_numeric(df_asistencia['salon_col'], errors='coerce')
+                #Elimanamos los datos NaN
+                df_asistencia = df_asistencia.dropna(subset=['salon_num'])
+                #Se convierte la columna 'salon_num' a números enteros
+                df_asistencia['salon_num'] = df_asistencia['salon_num'].astype(int)
+
+                #Aquí se cuenta cuántas veces aparece cada número de salón válido.
+                conteo_asistencia = df_asistencia['salon_num'].value_counts()
+
+
+                #Ccilo for para recorrer los resultados de conteo de asistencia, en donde 'salon_num' es el número de salón y 'cantidad' es su conteo
+                #.items()para recorrer tanto la clave como el valor 
+                for salon_num, cantidad in conteo_asistencia.items():
+
+                    #Donde esta clave sea la etiqueta del salon_num en entero
+                    saloninfo= f"Salón {int(salon_num)}"
+
+                    #Si la clave saloninfo ya existe en el diccionario
+                    if saloninfo in asistencia_salon:
+                        #En el diccionario de asistencia encuentre la entra para la clave
+                        asistencia_salon[saloninfo] = cantidad
+
+            except Exception as e:
+                messagebox.showerror("Error",f"procesando asistencia con DataFrame: {e}") 
+
+                #Se recorre el registro de la lista 
+                for registro in Asistencia_Vo:
+                    try:
+                        #Para verificar que no este vacío
+                        if len(registro) >= 1:
+                            #Aquí se convierte el primer elemento del 'registro' a un número entero.
+                            salon_num = int(registro[0])
+                            saloninfo = f"Salón {salon_num}"
+                            # Se verifica si este salón ya esta tenemos en el contador 'asistencia_salon'
+                            if saloninfo in asistencia_salon:
+                                #Si ya existe, le sumamos 1 al conteo
+                                asistencia_salon[saloninfo] += 1
+
+                    except (ValueError, IndexError):
+                        continue
+
+        #-------Resumen de votaciones----------
+
+        #Se inicia si 'resultados' no está vacío
+        if resultados:
+            #Aquí se convierte los resultados a un DataFrame
+            df_resultados = pd.DataFrame(resultados)
+            #se recorre cada columna
+            for columna in df_resultados.columns:
+                #Si la columna empeiza por 'p', que son las preguntas 
+                if columna.startswith('p'):
+                    #Se cuenta cuántas veces aparece cada respuesta en la columna
+                    conteo_colum = df_resultados[columna].value_counts()
+                    #conteo_column.items() da esto (índice, valor)
+                    # el for index, count in, es el que los "recibe" y los separa.
+                    conteo_dict = {str(index): count for index, count in conteo_colum.items()}
+                    #Se guarda el conteo de la pregunta en el resumen de votos que e el diccionario
+                    resumen_votos[columna] = conteo_dict
+
+        # mensaje de resumen
+        mensaje = "Resumen estadístico:\n\n"
+       
+        
+        # Formato para Jurados por Salón y por Mesa
+        mensaje += "\nTotal de Jurados por Salón:\n"
+        #Recorremos cada salón y su total de jurados para añadirlo al mensaje
+        for salon, total in jurados_salon.items():mensaje += f"   - {salon}: {total} jurados\n"
+
+        mensaje += "\nNúmero de Jurados por Mesa:\n"
+        # Ordenar las mesas para una mejor presentación,sorted()' organiza los elementos en una nueva lista
+        # 'key=lambda item ' le dice a 'sorted' cómo ordenar, así, ordena primero por salón, luego por mesa
+        organizacion_mesas = sorted(jurados_mesa.items(), key=lambda item: (int(item[0].split(',')[0].split(' ')[1]), int(item[0].split(',')[1].split(' ')[2])))
+        # Añadimos cada mesa y su total de jurados al mensaje
+        for mesainfo, total_jurados in organizacion_mesas:
+            mensaje += f"   - {mesainfo}: {total_jurados} jurado(s)\n"
+
+        mensaje += "\nTotal de Votantes por Salón:\n"
+        # Recorremos cada salón y su total de votante
+        for salon, total in votantes_salon.items():
+            mensaje += f"   - {salon}: {total} votantes\n"
+        
+        # Formato para Porcentaje de Mesas Completas
+        mensaje += f"\nPorcentaje de Mesas Completas:\n"
+        #.2 es para que solo esten dos dígitos después del punto decimal, y la 'f' como float (decimal)
+        mensaje += f"   - {porcentaje_completas:.2f}% ({mesas_completas}/{total_mesas} mesas)\n"
+
+        mensaje += "\nAsistencia de Votantes por Salón:\n" 
+        # Recorremos cada salón y su total de votantes asistidos.
+        for salon, total in asistencia_salon.items():
+            mensaje += f"   - {salon}: {total} asistido(s)\n" 
+        
+        #Se verifica si hay datos que mostrar
+        if resumen_votos:
+            mensaje += "\nResumen de Votaciones:\n"
+            # Recorremos cada pregunta y sus respuestas, en el diccionario
+            for pregunta, respuestas in resumen_votos.items():
+                # Aquí 'join()' pega los elementos de la lista
+                #.items()  es una secuencia de pares 
+                respuestas_str = ", ".join([f"{x}={y}" for x, y in respuestas.items()])
+                mensaje += f"   - {pregunta}: {respuestas_str}\n"
+        else:
+            mensaje += "\nResumen de Votaciones: No hay datos disponibles\n"
+
+            messagebox.showinfo("Resumen Estadístico Completo", mensaje)
+
+    except Exception as e:
+        error = f"Error al generar el resumen estadístico:\n{str(e)}"
+        messagebox.showerror("Error", error)
+
 #Defino el botón de BUscar la cédula del jurado
 def Buscar_Jurados():
     #donde la cedula_buscar es igual a la cédula que entro el Jurado
@@ -570,7 +774,7 @@ def guardar_Datos(EntryNombre, EntryCedula, EntryTel, EntryDire, numjurado, Mesa
 
  #Creo una lista de los Datos
     Datos = [Nombre, Cedula, Telefono, Direccion]
- 
+
  #Creo un ciclo while en donde uso len para contar los datos de la lista "mesajurados"
     while len(mesajurados) < Salon:
         mesajurados.append([])
@@ -645,7 +849,7 @@ tk.Button(window, text="Cargar resultados csv", command=Cargar_Resultados).grid(
 
 #BOTÓN PARA EL RESUMEN ESTADÍSTICO
 
-tk.Button(window,text="Resumen Estadístico", command="").grid(row=11, column=1, pady=5)
+tk.Button(window, text="Resumen Estadístico", command=lambda: resumen_estadistico(mesajurados, votantes, Asistencia_Vo, resultados)).grid(row=11, column=1, pady=5)
 
 #----------------------------------------------------------------------------------------------------
 
