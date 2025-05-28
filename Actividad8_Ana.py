@@ -373,7 +373,7 @@ def resumen_estadistico(mesajurados, votantes, Asistencia_Vo, resultados):
         total_mesas = totalmesas_registradas
         #sum() cuenta los  elementos que cumplen una función, el 1 es un contador
         # el if len es para verificar si en la longitud de mesas hay un jurado
-        mesas_completas = sum(1 for salon_data in mesajurados for mesa_data in salon_data if len(mesas) > 0)
+        mesas_completas = sum(1 for salon_data in mesajurados for mesas in salon_data if len(mesas) > 0)
         #verifica si el total de mesas es mayor y para no dividir entre 0 s pone un else para que ponga el dato en 0
         porcentaje_completas = (mesas_completas / total_mesas * 100) if total_mesas > 0 else 0
         
@@ -496,7 +496,7 @@ def resumen_estadistico(mesajurados, votantes, Asistencia_Vo, resultados):
         else:
             mensaje += "\nResumen de Votaciones: No hay datos disponibles\n"
 
-            messagebox.showinfo("Resumen Estadístico Completo", mensaje)
+        messagebox.showinfo("Resumen Estadístico", mensaje)
 
     except Exception as e:
         error = f"Error al generar el resumen estadístico:\n{str(e)}"
@@ -600,6 +600,15 @@ def CentroVotacion():
     Mesas = int(Mesas)
     Jurados = int(Jurados)
 
+    # Usamos un bucle que itera el número de veces requerido para los salones
+    for n in range(Salones):
+        salon_actual = []
+        # un bucle para las mesas dentro de cada salón
+        for n in range(Mesas):
+            # Cada mesa es una lista vacía para los jurados
+            salon_actual.append([])  
+        mesajurados.append(salon_actual)
+ 
     #Empiezo con salones donde hago un ciclo while para ir enumerando, uso *100 para que se haga un espaio grande en Salones
     s = 1
     while s <= Salones:
