@@ -3,6 +3,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
+from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import csv
@@ -88,10 +89,13 @@ def Buscar_votante():
         
         #Si no ingresa un número de cedula le muestra el error
         if not cedula:
-
-            messagebox.showerror("Error", "Debe ingresar un número de cédula.")
-
+            messagebox.showerror("Error", "Debe ingresar un número de cédula")
             return
+        
+        if not cedula.isdigit(): #Si la cédula contiene solo dígitos
+            messagebox.showerror("Error", "La cédula debe ser un número entero")
+            return
+
         
         #Aquí realizo un ciclo for para verificar si la cedula que ingresaron es la misma del archivo de un votante, donde "votantes" es el archivo csv
         encontrado=False
@@ -183,21 +187,29 @@ def Asistencia(Entrycedula,Entrysalon,Entrymesa,Entryhora):
         #Detiene la función en caso de que encuentre un error
         return
 
-    #Verifico que la hora 17:00 no puede ser registrado en caso de que la registren muestra un mensaje
-    if hora == "17:00":
-        messagebox.showerror("Error", "No se puede registrar asistencia a las 17:00.")
-     #Detiene la función en caso de que pongan la hora 17:00
-        return
-    
-    # if ":" no in hora es si no ponen la hora en el formato de ':'y el len que es la longitud de hora que debe ser de 5
-    #tomando en cuenta los ':', si no es igual a 5, muestra el mensaje
-    if ":" not in hora or len(hora) != 5:
-      
-      #Para poder dar un error en caso de que no pongan la hora en el formato correcto (HH:MM)
-      messagebox.showerror("Error", "La hora debe estar en formato HH:MM")
+    #Para verificar si la hora esta correcta, debo importar date time, en donde hora es lo que el usuario ingreso
+    hora= Entryhora.get().strip()
 
-     #Detiene la función en caso de que pongan un formato incorrecto
-      return
+    try:
+    # Intenta convertir la hora ingresada a datetime
+      hora = datetime.strptime(hora, "%H:%M").time()
+
+      # Aqui limito el rango en el que deben estar las horas
+      hora_mañana = datetime.strptime("07:00", "%H:%M").time()
+      hora_nocturna = datetime.strptime("16:00", "%H:%M").time()
+
+        #Ver si esta condición se cumple, si no muestra el mensaje
+      if not (hora_mañana <= hora <= hora_nocturna):
+        messagebox.showerror("Error", "La hora debe estar entre 07:00 y 16:00.")
+        return
+      
+    except ValueError:
+     # Si la hora es ingresada en un formato que no es válido muestra esto
+       messagebox.showerror("Error", "Hora inválida. Ingrese en formato HH:MM")
+       return
+
+
+    
     
     #Inicia en false ya que no se ha encontrado el dato aún
     encontrado = False
@@ -763,11 +775,15 @@ def guardar_Datos(EntryNombre, EntryCedula, EntryTel, EntryDire, numjurado, Mesa
  #Uso try para lo mismo, que me informe si hay un error al ingresar datos que no son int
     try:
         Cedula = int(EntryCedula.get())
-        Telefono = int(EntryTel.get())
     except ValueError:
-        messagebox.showerror("Error", "Cédula y Teléfono deben ser números.")
+        messagebox.showerror("Error", "La cédula debe ser un número.")
         return
-
+    try:
+     Telefono = int(EntryTel.get())
+    except ValueError:
+        messagebox.showerror("Error", "El teléfono debe ser un número.")
+        return
+    
     if not Nombre or not Cedula or not Telefono or not Direccion:
         messagebox.showerror("Error", "Por favor, complete todos los campos.")
         return
@@ -796,12 +812,343 @@ def guardar_Datos(EntryNombre, EntryCedula, EntryTel, EntryDire, numjurado, Mesa
     mesajurados[Salon - 1][Mesa - 1].append(Datos)
     messagebox.showinfo("Guardado", f"Jurado {numjurado} registrado en la Mesa {Mesa} y en el Salón {Salon} ")
 
-# INTERFAZ PRINCIPAL
+#-------------------------------GRÁFICOS-----------------------------------
 
+def obtener_datos_para_graficos():
+    
+    # Se crea un diccionario, este diccionario será el contenedor final
+    # Inicializamos cada clave con un diccionario vacío o con ceros, listos para ser llenados.
+    datos_graficos = {
+        'total_jurados_salon': {}, # Diccionario vacío para contar jurados por salón ('Salón 1': 10)
+        'total_votantes_salon': {}, # otro diccionario vacío para contar votantes registrados por salón
+        'total_asistencia_salon': {}, # diccionario vacío para contar asistencia por salón
+        'mesas_completas': {'completa': 0, 'incompleta': 0, 'total': 0}, # Contadores para mesas con jurados
+        'votantes_asistencia': {'asistieron': 0, 'no_asistieron': 0}, # Contadores para asistencia general de votantes
+        'resultados_preguntas_mesas': {} # Diccionario para almacenar resultados de preguntas por cada mesa
+    }
+
+    # ----Procesamiento de Jurados por Salón y Estado de Mesas---
+
+    # 'enumerate(mesajurados, 1)' recorre la lista 'mesajurados' donde nos dan tanto el índice (i, empezando en 1) como el valor (salones) en cada iteración.
+    # el 'i' es el número del salón (1, 2, 3...) y 'salones' es la lista de mesas en ese salón.
+    for i, salones in enumerate(mesajurados, 1): 
+
+        # Se reinicia el contador de jurados para cada nuevo salón
+        salontotaljurados = 0 
+
+        #Aquí recorro cada 'mesa' dentro de la lista de 'salones'
+        #en donde 'm' es el número de la mesa y 'mesas' es la lista de jurados en esa mesa.
+        for m, mesas in enumerate(salones, 1): 
+
+            num_juradosmesa = len(mesas) # 'len()' devuelve la longitud de la lista, en este caso es el número de jurados en la mesa
+
+            #Se suma los jurados de la mesa actual al total del salón
+            salontotaljurados += num_juradosmesa 
+            
+            # Se hace como una cantabilización en el total de mesas procesadas
+            datos_graficos['mesas_completas']['total'] += 1
+            # Si una mesa tiene al menos 1 jurado, se considera como 'completas' 
+            if num_juradosmesa > 0: # Si la cantidad de jurados en la mesa es mayor que 0
+                datos_graficos['mesas_completas']['completa'] += 1 # Incrementa el contador de mesas 'completas'
+             # Si la mesa no tiene jurados el num_juradosmesa es 0
+            else:
+                #Se incrementa el contador de mesas 'incompletas'
+                datos_graficos['mesas_completas']['incompleta'] += 1 
+        # Se guarda el total de jurados para ese salón, dando como etiqueta 'Salón{1}'
+        datos_graficos['total_jurados_salon'][f"Salón {i}"] = salontotaljurados
+
+    #-------Votantes por Salón-----------
+    # 'pd.DataFrame(votantes)' convierte la lista de diccionarios 'votantes' en un DataFrame
+    df_votantes = pd.DataFrame(votantes)
+    # Verifica si el DataFrame de votantes no está vacío.
+    if not df_votantes.empty:
+        # 'pd.to_numeric()' intenta convertir la columna 'salon' a números, 'errors='coerce'' convierte los valores en NaN los ue no se pueden convertir.
+        # '.fillna(0)' reemplaza los NaN por 0 y '.astype(int)' convierte la columna a tipo entero.
+        df_votantes['salon_num'] = pd.to_numeric(df_votantes['salon'], errors='coerce').fillna(0).astype(int)
+        # '.value_counts()' cuenta la frecuencia de cada valor único en la columna 'salon_num'
+        conteo_votantes = df_votantes['salon_num'].value_counts()
+        for i in range(1, len(mesajurados) + 1): # Recorre los números de salón basándose en 'mesajurados'
+            # '.get(i, 0)' intenta obtener el conteo para el salón 'i'. Si 'i' no existe en 'conteo_votantes' (es decir, no hay votantes para ese salón),
+            # devuelve 0 en lugar de un error. Esto es muy útil para manejar salones sin datos.
+       
+         datos_graficos['total_votantes_salon'][f"Salón {i}"] = conteo_votantes.get(i, 0)
+    # Si el DataFrame de votantes se encuentra vacío
+    else: 
+        for i in range(1, len(mesajurados) + 1):
+            # Se inicia el conteo de votantes a 0 para todos los salones
+            datos_graficos['total_votantes_salon'][f"Salón {i}"] = 0 
+
+    #-----------Asistencia de Votantes por Salón---------------
+
+    #Realizo un ciclo for para verificar los salones, el +1 es para que genere rango de (1, al número de salones) 
+    #len(mesajurados) da la longitud de salones y se crea una secuencia del 1 hasta el total de salones
+    for i in range(1, len(mesajurados) + 1):
+        datos_graficos['total_asistencia_salon'][f"Salón {i}"] = 0 
+
+    #Aquí se verifica si la lista 'Asistencia_Vo' no está vacía
+    if Asistencia_Vo: 
+
+        try: 
+            # Crea un DataFrame con la lista 'Asistencia_Vo',en donde le asigna nombres a las columnas
+            df_asistencia = pd.DataFrame(Asistencia_Vo, columns=['salon_col', 'mesa', 'cedula', 'hora'])
+
+            df_asistencia['salon_num'] = pd.to_numeric(df_asistencia['salon_col'], errors='coerce').fillna(0).astype(int)
+
+            conteo_asistencia = df_asistencia['salon_num'].value_counts() # Cuenta la frecuencia de asistencia por salón.
+
+             #Realiza el ciclo for sobre los conteos obtenidos.
+            for salon_num, cantidad in conteo_asistencia.items():
+
+                # Asigna la cantidad de asistencias al salón correspondiente.
+                datos_graficos['total_asistencia_salon'][f"Salón {int(salon_num)}"] = cantidad 
+
+        except Exception as e: 
+            messagebox.showerror("Error Interno (Gráficos)", f"Error al procesar asistencia para gráficos: {e}")
+
+            #Por si hay un fallo
+            # Recorre la lista original 'Asistencia_Vo' para contar manualmente.
+            for registro in Asistencia_Vo:
+                try:
+                    # Se asegura que el registro tenga al menos un elemento (el salón)
+                    if len(registro) >= 1: 
+                        #Se intenta convertir el primer elemento a entero (número de salón)
+                        salon_num = int(registro[0]) 
+                        salon_info = f"Salón {salon_num}"
+                        #Aquí se verifica si el salón ya existe en el diccionario.
+                        if salon_info in datos_graficos['total_asistencia_salon']: 
+                            # Incrementa el contador de asistencia para ese salón.
+                            datos_graficos['total_asistencia_salon'][salon_info] += 1 
+
+                except (ValueError, IndexError):
+                    continue # Salta al siguiente registro si hay un error.
+
+    #-----------Votantes Asistidos vs. No Asistidos (información general)---------------
+
+    # Obtiene la longitud del número total de votantes registrados
+    total_votantes_registrados = len(votantes) 
+    # Obtiene la longitud del número total de registros de asistencia
+    total_votantes_asistieron = len(Asistencia_Vo) 
+    #Se hace una resta para calcular quienes no asistieron
+    total_votantes_no_asistieron = total_votantes_registrados - total_votantes_asistieron
+    
+    # Guarda los conteos en el diccionario 'votantes_asistencia'
+    datos_graficos['votantes_asistencia']['asistieron'] = total_votantes_asistieron
+    # Evita que el número de no asistidos sea negativo si 'asistieron' es mayor que 'registrados'
+    datos_graficos['votantes_asistencia']['no_asistieron'] = total_votantes_no_asistieron if total_votantes_no_asistieron >= 0 else 0
+
+
+    #-----------"Sí" y "No" por Pregunta por Mesa--------------
+
+    # Verifica si la lista 'resultados' no está vacía
+    if resultados: 
+        df_resultados = pd.DataFrame(resultados) 
+        # '.iterrows()' hace el ciclo for sobre las filas del DataFrame, devolviendo el índice y la fila como una Serie
+        for f, fila in df_resultados.iterrows(): 
+            # Aquí se  crea una clave única para cada salón y mesa
+            salon_mesa_info = f"Salón {fila['salon']}, Mesa {fila['mesa']}" 
+
+            # Si esta combinación de salón y mesa no existe en el diccionario, la inicializa
+            if salon_mesa_info not in datos_graficos['resultados_preguntas_mesas']:
+                datos_graficos['resultados_preguntas_mesas'][salon_mesa_info] = {}
+
+            for columna in df_resultados.columns: 
+                # Si el nombre de la columna comienza con 'p' es para la pregunta
+                    pregunta = columna 
+                    respuesta = fila[columna] #Aquí ya se tiene la respuesta y se guarda
+                    
+                    # Si la pregunta no ha sido inicializada para esta mesa, la inicializa con contadores a cero
+                    if pregunta not in datos_graficos['resultados_preguntas_mesas'][salon_mesa_info]:
+                        datos_graficos['resultados_preguntas_mesas'][salon_mesa_info][pregunta] = {'Sí': 0, 'No': 0, 'Total': 0}
+                    
+                    # Cuenta las respuestas 'sí' y 'no', '.lower()' convierte la respuesta a minúsculas para comparar
+                    if respuesta.lower() == 'si': 
+                        datos_graficos['resultados_preguntas_mesas'][salon_mesa_info][pregunta]['Sí'] += 1
+                        datos_graficos['resultados_preguntas_mesas'][salon_mesa_info][pregunta]['Total'] += 1 
+                    elif respuesta.lower() == 'no':
+                        datos_graficos['resultados_preguntas_mesas'][salon_mesa_info][pregunta]['No'] += 1
+                        datos_graficos['resultados_preguntas_mesas'][salon_mesa_info][pregunta]['Total'] += 1 # Incrementa el total de respuestas para la pregunta.
+
+    # Devuelve el diccionario completo con todos los datos procesados.      
+    return datos_graficos 
+
+graficos_info = None
+
+#Esta función calcula o recupera los datos para los gráficos.
+    
+def calcular_datos_graficos():
+    
+    #Global se usa para declarar que se va a usar la variable global 'graficos_info'
+    global graficos_info 
+    
+    # Llama a 'obtener_datos_para_graficos()' para poder generar los datos
+    graficos_info = obtener_datos_para_graficos()
+    
+    if not graficos_info: # Si esta vacío
+        messagebox.showinfo("Error", "No hay datos suficientes para generar gráficos. Asegúrate de cargar la información")
+        return None # El None es en caso de que no hayan datos
+     #Devuelve el diccionario de datos.
+    return graficos_info 
+
+def mostrar_grafico_barras(datos):
+
+    # Si no hay datos, se detiene 
+    if not datos: return
+
+    # Combina las claves de los tres diccionarios de salón para obtener una lista única de todos los salones.
+    # '.keys()' obtiene las claves de un diccionario,'sorted()' ordena la lista de salones alfabéticamente/numéricamente.
+    salones = sorted(list(set(datos['total_jurados_salon'].keys()) | \
+                          set(datos['total_votantes_salon'].keys()) | \
+                          set(datos['total_asistencia_salon'].keys())))
+    
+    if not salones: 
+        messagebox.showinfo("Información", "No hay salones registrados para generar el gráfico de barras")
+        return
+    
+    # Prepara las listas de conteos para cada categoría, '.get(s, 0)' es: si un salón no tiene datos en una categoría, devuelve 0 en lugar de un error.
+    jurados_counts = [datos['total_jurados_salon'].get(s, 0) for s in salones]
+    votantes_counts = [datos['total_votantes_salon'].get(s, 0) for s in salones]
+    asistencia_counts = [datos['total_asistencia_salon'].get(s, 0) for s in salones]
+
+    # Crea una secuencia de números para las posiciones en el eje X del gráfico (0, 1, 2...).
+    x = range(len(salones)) 
+    width = 0.25  #esto es para el tamaños de las barras
+    
+    # 'plt.subplots()' crea una figura (fig1) y un conjunto de ejes (eje1) para el gráfico.
+    # La 'figura' es donde se hacen las barras y los 'ejes' son el área real donde se trazan los datos
+    fig1, eje1 = plt.subplots(figsize=(12, 7)) #Es para el tamañano de la figura
+
+    # 'eje1.bar()' es el que  dibuja las barras
+    # '[i - width for i in x]' ajusta la posición de las barras para que estén centradas o agrupadas
+    rects1 = eje1.bar([i - width for i in x], jurados_counts, width, label='Jurados')
+    rects2 = eje1.bar(x, votantes_counts, width, label='Votantes Registrados')
+    rects3 = eje1.bar([i + width for i in x], asistencia_counts, width, label='Votantes con Asistencia')
+
+    eje1.set_xlabel('Salón') # Etiqueta para el eje X.
+    eje1.set_ylabel('Cantidad') # Etiqueta para el eje Y.
+    eje1.set_title('Número de Jurados, Votantes y Votantes con Asistencia por Salón')
+    eje1.set_xticks(x) # Establece las posiciones de las marcas del eje X
+    eje1.set_xticklabels(salones, rotation=45, ha="right") # Establece las etiquetas del eje X, rotándolas
+    eje1.legend() # Muestra una caja o un cuadro donde informa que es cada elemento
+    plt.tight_layout() # Ajusta automáticamente los parámetros del gráfico para que quepa bien en la figura
+    plt.show() # Muestra el gráfico.
+
+
+
+ #Muestra un gráfico de pastel con las mesas con jurados completos vs. incompletos
+def mostrar_grafico_pastel_mesas(datos):
+   
+    if not datos: return
+
+    # Accede a la información de mesas 
+    mesas_info = datos['mesas_completas']
+    if mesas_info['total'] == 0: #Si no hay mesas, muestra la info
+        messagebox.showinfo("Información", "No se encuentran mesas registradas para generar el gráfico de pastel de jurados")
+        return
+    
+    # Prepara las etiquetas para el pastel, incluyendo los conteos
+    labels_mesas = [f'Completas ({mesas_info["completa"]})', f'Incompleta ({mesas_info["incompleta"]})']
+    sizes_mesas = [mesas_info['completa'], mesas_info['incompleta']] # Los valores para las porciones del pastel
+    colors_mesas = ['#4CAF50', '#FFC107'] #Estos son los colores para cada porción
+
+    fig2, eje2 = plt.subplots(figsize=(8, 8)) # una nueva figura y ejes
+    # 'eje2.pie()' dibuja el gráfico de pastel, 'autopct='%1.1f%%'' formatea el porcentaje en cada porción 
+    # 'startangle=90' rota el inicio del primer sector a 90 grados 
+    # 'wedgeprops' permite personalizar las porciones del pastel
+    eje2.pie(sizes_mesas, labels=labels_mesas, autopct='%1.1f%%', startangle=90, colors=colors_mesas, wedgeprops={"edgecolor": "black", 'linewidth': 1, 'antialiased': True})
+    eje2.axis('equal') # Asegura que el pastel sea un círculo bien hecho
+    eje2.set_title(' Mesas con Jurados Completos vs. los Incompletos')
+    plt.show()
+
+#Muestra un gráfico de pastel votantes que asistieron vs. los que no asistieron  
+def mostrar_grafico_pastel_asistencia(datos):
+    if not datos: return
+
+    # Accede a la información de asistencia de votantes.
+    votantes_asistencia = datos['votantes_asistencia']
+    total_votantes_general = votantes_asistencia['asistieron'] + votantes_asistencia['no_asistieron']
+    
+    if total_votantes_general == 0: # Si no hay votantes muestra el mensaje 
+        messagebox.showinfo("Información", "No hay votantes registrados para generar el gráfico de pastel de asistencia")
+        return
+    
+    labels_asistencia = [f'Asistieron ({votantes_asistencia["asistieron"]})', f'No Asistieron ({votantes_asistencia["no_asistieron"]})']
+    sizes_asistencia = [votantes_asistencia['asistieron'], votantes_asistencia['no_asistieron']]
+    colors_asistencia = ['#2196F3', '#F44336'] 
+
+    fig3, eje3 = plt.subplots(figsize=(8, 8))
+    eje3.pie(sizes_asistencia, labels=labels_asistencia, autopct='%1.1f%%', startangle=90, colors=colors_asistencia, wedgeprops={"edgecolor": "black", 'linewidth': 1, 'antialiased': True})
+    eje3.axis('equal')
+    eje3.set_title('Proporción de Votantes que Asistieron vs. los que No Asistieron')
+    plt.show()
+
+# gráficos de barras horizontales mostrando el porcentaje de 'Sí' y 'No' para cada pregunta por cada mesa que tenga resultados
+def mostrar_graficos_barras_preguntas(datos):
+    if not datos: return
+    # Verifica si hay resultados de votación en la clave correcta.
+    if not datos['resultados_preguntas_mesas']:
+        messagebox.showinfo("Información", "No hay resultados de votación cargados para generar los gráficos de preguntas")
+        return
+    
+    # Hace ciclo for sobre cada combinación de salón y mesa que tiene resultados
+    for salon_mesa, preguntas_data in datos['resultados_preguntas_mesas'].items():
+        # Para cada salón y mesa, itera sobre cada pregunta y sus conteos
+        for pregunta, counts in preguntas_data.items():
+            total_respuestas = counts['Total']
+            if total_respuestas == 0: # Si no hay respuestas para esta pregunta en esta mesa, sigue a la siguiente
+                continue 
+            porcentaje_si = (counts['Sí'] / total_respuestas) * 100 # Calcula el porcentaje de 'Sí'
+            porcentaje_no = (counts['No'] / total_respuestas) * 100 # Calcula el porcentaje de 'No'
+
+            fig4, eje4 = plt.subplots(figsize=(8, 4)) # Crea una nueva figura y ejes para cada gráfico de pregunta.
+            respuestas_labels = ['Sí', 'No'] # Etiquetas para las barras
+            porcentajes = [porcentaje_si, porcentaje_no] # Los valores de porcentaje
+            colors_respuestas = ['#8BC34A', '#FF5722'] # Colores para 'Sí' y 'No'
+
+            # 'ax4.barh()' dibuja barras horizontales.
+            eje4.barh(respuestas_labels, porcentajes, color=colors_respuestas)
+            eje4.set_xlabel('Porcentaje') # Etiqueta del eje X.
+            eje4.set_title(f'Resultados de Votación para {pregunta.upper()} en {salon_mesa}') # Título del gráfico
+            eje4.set_xlim(0, 100) # Establece los límites del eje X de 0 a 100%
+
+            # Añade el porcentaje a cada barra
+            for index, value in enumerate(porcentajes):
+                # 'eje4.text()' añade texto en una posición específica, 'value + 1' coloca el texto a la derecha del final de la barra
+                # 'index' es la posición vertical (0 para 'Sí', 1 para 'No'),  'f'{value:.1f}%'' cambia el número a una cifra decimal seguido de '%'
+                eje4.text(value + 1, index, f'{value:.1f}%', va='center') # 'va='center'' centra el texto verticalmente.
+
+            plt.tight_layout() # Ajusta el layout para evitar superposiciones.
+            plt.show() # Muestra el gráfico.
+
+def generar_graficos():
+    datos = calcular_datos_graficos()
+    if not datos:
+        return # Si no hay datos, ya se mostró un mensaje de error.
+    ventana_graficos = tk.Toplevel()
+    ventana_graficos.title("Seleccionar el Gráfico")
+    ventana_graficos.geometry("600x300")
+    ventana_graficos.resizable(False, False)
+
+    tk.Label(ventana_graficos, text="SELECCIONE EL TIPO DE GRÁFICA", ).pack(pady=5)
+
+    # Botón para Jurados, Votantes y Asistencia por Salón (Barras)
+    tk.Button(ventana_graficos, text="Jurados, Votantes y Asistencia por Salón",
+              command=lambda: mostrar_grafico_barras(datos),
+              width=40, height=2).pack(pady=5)
+
+    # Botón para Mesas Completas vs. Incompletas (Pastel)
+    tk.Button(ventana_graficos, text="Mesas con Jurados Completos vs. Incompletos",
+              command=lambda: mostrar_grafico_pastel_mesas(datos), width=40, height=2).pack(pady=5)
+    
+    # Botón para Votantes Asistidos vs. No Asistidos (Pastel)
+    tk.Button(ventana_graficos, text="Votantes Asistidos vs. No Asistidos",command=lambda: mostrar_grafico_pastel_asistencia(datos),width=40, height=2).pack(pady=5)
+
+    # Botón para Porcentaje "Sí" y "No" por Pregunta y Mesa (Barras Horizontales)
+    tk.Button(ventana_graficos, text="Resultados de Votación por Pregunta y Mesa",command=lambda: mostrar_graficos_barras_preguntas(datos),width=40, height=2).pack(pady=5)
+
+# INTERFAZ PRINCIPAL
 window = tk.Tk()
 window.title("Registro de Votación")
-window.geometry("200x300")
-
+window.geometry("1000x700")
 #Realizo todos los datos con la filas y las columnas , al finalizar realizo el botón 
 
 tk.Label(window, text="Número de Salones: ").grid(row=0, column=0, padx=10, pady=5)
@@ -820,25 +1167,24 @@ EntryJurados.grid(row=2, column=1, padx=10, pady=5)
 
 #BUSCAR JURADO POR CEDULA
 
-tk.Label(window, text="Buscar Jurado por Cédula: ").grid(row=12, column=0, padx=10, pady=5)
+tk.Label(window, text="Buscar Jurado por Cédula: ").grid(row=13, column=0, padx=50, pady=5)
 EntryCedulajurado = tk.Entry(window)
-EntryCedulajurado.grid(row=12, column=1, padx=10, pady=5)
+EntryCedulajurado.grid(row=13, column=1, padx=10, pady=5)
 
-tk.Button(window,text="Buscar", command=Buscar_Jurados).grid(row=12,column=2, pady=5)
+tk.Button(window,text="Buscar", command=Buscar_Jurados).grid(row=13,column=2, pady=5)
 
 #BUSCAR VOTANTE POR CÉDULA
 
-tk.Label(window, text="Buscar Votante por Cédula: ").grid(row=13, column=0, padx=10, pady=5)
+tk.Label(window, text="Buscar Votante por Cédula: ").grid(row=14, column=0, pady=5)
 EntryVotante = tk.Entry(window)
-EntryVotante.grid(row=13, column=1, padx=10, pady=5)
+EntryVotante.grid(row=14, column=1, padx=10, pady=5)
 
-tk.Button(window, text="Buscar", command=Buscar_votante).grid(row=13, column=2, pady=5)
+tk.Button(window, text="Buscar", command=Buscar_votante).grid(row=14, column=2, pady=5)
 
 
 #BOTÓN GUARDAR CENTRO DE VOTACIÓN 
 
 tk.Button(window,text="Guardar Centro de Votación", command=Guardar_Centrode_Votacion).grid(row=4, column=1, pady=10)
-
 
 #BOTÓN CARGAR CENTRO DE VOTACIÓN
 
@@ -846,7 +1192,7 @@ tk.Button(window,text="Cargar Centro de Votación", command="").grid(row=6,colum
 
 #BOTÓN CARGAR VOTANTES
 
-tk.Button(window, text="Cargar Votantes", command=Cargar_Votantes).grid(row=8, column=1, pady=5)
+tk.Button(window, text="Cargar Votantes", command=Cargar_Votantes).grid(row=8, column=1, pady=5,)
 
 #BOTÓN PARA LA ASISTENCIA
 
@@ -860,6 +1206,9 @@ tk.Button(window, text="Cargar resultados csv", command=Cargar_Resultados).grid(
 
 tk.Button(window, text="Resumen Estadístico", command=lambda: resumen_estadistico(mesajurados, votantes, Asistencia_Vo, resultados)).grid(row=11, column=1, pady=5)
 
+#BOTÓN PARA GRÁFICOS
+
+tk.Button(window,text="Generar Gráficos", command=generar_graficos).grid(row=12,column=1, pady=5)
 #----------------------------------------------------------------------------------------------------
 
 #Botón Centro de votación
@@ -869,6 +1218,6 @@ tk.Button(window, text="Generar Centro de Votación", command=CentroVotacion).gr
 #padx es para el espacio  horizontal y pady para el vertical
 #Aqui es donde hago el Frame para el diseño de Salones y los otros datos
 frame_principal = tk.Frame(window)
-frame_principal.grid(row=14, column=0, columnspan=2,padx=10, pady=10)
+frame_principal.grid(row=15, column=0, columnspan=2,padx=10, pady=10)
 
 window.mainloop()
